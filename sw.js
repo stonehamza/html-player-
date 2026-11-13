@@ -1,0 +1,6 @@
+const CACHE_NAME="html-tv-launcher-v3";
+const FILES=["./","./index.html","./manifest.webmanifest","./icon.svg"];
+self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(FILES)));self.skipWaiting()});
+self.addEventListener("activate",e=>{e.waitUntil((async()=>{for(const k of await caches.keys())if(k!==CACHE_NAME)await caches.delete(k);await self.clients.claim()})())});
+self.addEventListener("message",e=>{if(e.data?.type==="CHECK_CACHE"&&e.ports?.[0])e.waitUntil((async()=>{try{const c=await caches.open(CACHE_NAME);const missing=[];for(const p of FILES)if(!await c.match(new Request(new URL(p,self.registration.scope))))missing.push(p);e.ports[0].postMessage({ok:missing.length===0,missing})}catch(err){e.ports[0].postMessage({ok:false,error:String(err)})}})())});
+self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith((async()=>{const c=await caches.open(CACHE_NAME),hit=await c.match(e.request);if(hit)return hit;try{const r=await fetch(e.request);if(r.ok)c.put(e.request,r.clone());return r}catch(err){if(e.request.mode==="navigate")return await c.match("./index.html")||Response.error();return Response.error()}})())});
